@@ -1,6 +1,6 @@
 // Vendored from ../zellij-modal/index.ts to keep pi-rtk-optimizer standalone.
 // Keep this module in sync when upstream zellij-modal primitives change.
-import { getSettingsListTheme, type ExtensionAPI, type Theme } from "@mariozechner/pi-coding-agent";
+import { getSettingsListTheme, type ExtensionAPI, type Theme } from "@earendil-works/pi-coding-agent";
 import {
 	Box,
 	Container,
@@ -10,7 +10,7 @@ import {
 	truncateToWidth,
 	visibleWidth,
 	type SettingItem,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 
 const ANSI_RESET = "\x1b[0m";
 
@@ -782,13 +782,22 @@ export class ZellijModal implements ZellijModalComponent {
 /**
  * Options for the pre-built settings modal content renderer.
  */
+export interface SettingsTab {
+	label: string;
+	settings: SettingItem[];
+}
+
 export interface SettingsModalOptions {
 	/** Modal heading. */
 	title: string;
 	/** Optional descriptive subtitle shown above settings. */
 	description?: string;
-	/** Settings list items. */
-	settings: SettingItem[];
+	/** Settings list items (used when tabs are not provided). */
+	settings?: SettingItem[];
+	/** Optional tabs for grouped settings. */
+	tabs?: SettingsTab[];
+	/** Initial active tab index. */
+	activeTabIndex?: number;
 	/** Called when a setting value changes. */
 	onChange: (id: string, value: string) => void;
 	/** Called when modal should close. */
@@ -808,6 +817,9 @@ export class ZellijSettingsModal implements ZellijModalContentRenderer {
 	private settingsList: SettingsList;
 	private options: SettingsModalOptions;
 	private theme: Theme;
+	private showTabs: boolean;
+	private activeTabIndex: number;
+	private tabLists: SettingsList[];
 
 	constructor(options: SettingsModalOptions, theme: Theme) {
 		if (!options.title || !options.title.trim()) {
@@ -816,37 +828,34 @@ export class ZellijSettingsModal implements ZellijModalContentRenderer {
 
 		this.options = options;
 		this.theme = theme;
+		this.showTabs = options.tabs !== undefined && options.tabs.length > 0;
+		this.tabLists = this.showTabs ? options.tabs!.map((tab) => this.createSettingsList(tab.settings, () => this.options.onClose())) : [];
+		this.activeTabIndex = this.normalizeActiveTabIndex(options.activeTabIndex ?? 0);
 		this.container = new Container();
 		this.contentBox = new Box(0, 0);
 
-		this.contentBox.addChild(new Text(this.theme.fg("accent", this.theme.bold(options.title)), 0, 0));
+		if (this.showTabs) {
+			this.settingsList = this.tabLists[this.activeTabIndex] ?? this.tabLists[0]!;
+		} else {
+			this.contentBox.addChild(new Text(this.theme.fg("accent", this.theme.bold(options.title)), 0, 0));
 
-		if (options.description) {
+			if (options.description) {
+				this.contentBox.addChild(new Spacer(1));
+				this.contentBox.addChild(new Text(this.theme.fg("muted", options.description), 0, 0));
+			}
+
 			this.contentBox.addChild(new Spacer(1));
-			this.contentBox.addChild(new Text(this.theme.fg("muted", options.description), 0, 0));
+			const fallbackSettings = options.settings ?? [];
+			this.settingsList = this.createSettingsList(fallbackSettings, () => this.options.onClose());
+			this.contentBox.addChild(this.settingsList);
+
+			if (options.helpText) {
+				this.contentBox.addChild(new Spacer(1));
+				this.contentBox.addChild(new Text(this.theme.fg("dim", options.helpText), 0, 0));
+			}
+
+			this.container.addChild(this.contentBox);
 		}
-
-		this.contentBox.addChild(new Spacer(1));
-		this.settingsList = new SettingsList(
-			options.settings,
-			Math.min(Math.max(options.settings.length + 2, 6), 18),
-			getSettingsListTheme(),
-			(id: string, value: string) => {
-				this.options.onChange(id, value);
-			},
-			() => {
-				this.options.onClose();
-			},
-			{ enableSearch: options.enableSearch ?? true },
-		);
-		this.contentBox.addChild(this.settingsList);
-
-		if (options.helpText) {
-			this.contentBox.addChild(new Spacer(1));
-			this.contentBox.addChild(new Text(this.theme.fg("dim", options.helpText), 0, 0));
-		}
-
-		this.container.addChild(this.contentBox);
 	}
 
 	/**
@@ -855,18 +864,100 @@ export class ZellijSettingsModal implements ZellijModalContentRenderer {
 	render(width: number): string[] {
 		const safeWidth = Math.max(1, width);
 		try {
-			return this.container.render(safeWidth);
+			if (!this.showTabs) {
+				return this.container.render(safeWidth);
+			}
+
+			const lines: string[] = [];
+
+			// Title
+			lines.push(this.theme.fg("accent", this.theme.bold(this.options.title)));
+			lines.push("");
+
+			// Tab bar
+			lines.push(this.renderTabBar(safeWidth));
+			lines.push("");
+
+			// Active settings list for the selected tab.
+			const activeList = this.tabLists[this.activeTabIndex] ?? this.tabLists[0];
+			if (activeList) {
+				const listRender = activeList.render(safeWidth);
+				lines.push(...listRender);
+			}
+
+			// Separator + help text
+			if (this.options.helpText) {
+				lines.push(this.theme.fg("border", "─".repeat(Math.max(0, safeWidth))));
+				lines.push(this.theme.fg("dim", this.options.helpText));
+			}
+
+			return lines;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return [this.theme.fg("error", truncateToWidth(`Settings render error: ${message}`, safeWidth, "…"))];
 		}
 	}
 
+	private createSettingsList(settings: SettingItem[], onCancel: () => void): SettingsList {
+		return new SettingsList(
+			settings,
+			Math.min(Math.max(settings.length + 2, 6), 18),
+			getSettingsListTheme(),
+			(id: string, value: string) => {
+				this.options.onChange(id, value);
+			},
+			onCancel,
+			{ enableSearch: this.options.enableSearch ?? true },
+		);
+	}
+
+	private normalizeActiveTabIndex(index: number): number {
+		if (!this.showTabs || this.tabLists.length === 0) {
+			return 0;
+		}
+
+		const normalized = Number.isFinite(index) ? Math.floor(index) : 0;
+		return ((normalized % this.tabLists.length) + this.tabLists.length) % this.tabLists.length;
+	}
+
+	private renderTabBar(width: number): string {
+		if (!this.showTabs || !this.options.tabs || this.options.tabs.length === 0) {
+			return "";
+		}
+
+		const parts: string[] = [];
+		for (let i = 0; i < this.options.tabs.length; i++) {
+			const label = this.options.tabs[i].label;
+			if (i === this.activeTabIndex) {
+				parts.push(this.theme.fg("accent", `[ ${label} ]`));
+			} else {
+				parts.push(this.theme.fg("muted", `  ${label}  `));
+			}
+		}
+
+		return truncateToWidth(parts.join(""), width, "…");
+	}
+
+	private switchTab(direction: number): void {
+		if (!this.showTabs || this.tabLists.length === 0) {
+			return;
+		}
+		this.activeTabIndex = this.normalizeActiveTabIndex(this.activeTabIndex + direction);
+		this.settingsList = this.tabLists[this.activeTabIndex] ?? this.tabLists[0]!;
+	}
+
 	/**
 	 * Invalidate internal caches.
 	 */
 	invalidate(): void {
-		this.container.invalidate();
+		if (!this.showTabs) {
+			this.container.invalidate();
+			return;
+		}
+
+		for (const list of this.tabLists) {
+			list.invalidate();
+		}
 	}
 
 	/**
@@ -876,6 +967,15 @@ export class ZellijSettingsModal implements ZellijModalContentRenderer {
 		if (isEnterActivationInput(data)) {
 			return;
 		}
+		if (this.showTabs && data === "\x1b[D") {
+			this.switchTab(-1);
+			return;
+		}
+		if (this.showTabs && data === "\x1b[C") {
+			this.switchTab(1);
+			return;
+		}
+
 		this.settingsList.handleInput(data);
 	}
 
@@ -883,7 +983,14 @@ export class ZellijSettingsModal implements ZellijModalContentRenderer {
 	 * Programmatically update one setting value in the list.
 	 */
 	updateValue(id: string, value: string): void {
-		this.settingsList.updateValue(id, value);
+		if (!this.showTabs) {
+			this.settingsList.updateValue(id, value);
+			return;
+		}
+
+		for (const list of this.tabLists) {
+			list.updateValue(id, value);
+		}
 	}
 }
 

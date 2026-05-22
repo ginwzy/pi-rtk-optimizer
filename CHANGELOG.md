@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-22
+
+### Added
+- Added tabbed `/rtk` settings modal groups with left/right tab navigation and context-aware help for search and value changes.
+- Added anchor-safe `read` compaction that detects hashline/anchored read output and preserves complete edit anchors during source filtering, smart truncation, and hard truncation.
+
+### Changed
+- Updated package metadata and lockfile version to `0.8.0` and migrated Pi peer dependency metadata to the `@earendil-works` scope.
+
 ## [0.7.1] - 2026-05-04
 
 ### Changed

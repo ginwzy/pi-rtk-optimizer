@@ -33,11 +33,12 @@ Multi-stage pipeline to reduce token consumption:
 | Search Grouping | Groups `grep`/`rg` results by file |
 | Source Code Filtering | `none`, `minimal`, or `aggressive` comment/whitespace removal with userscript metadata preservation |
 | Smart Truncation | Preserves file boundaries and important lines while keeping 80-line reads exact |
+| Anchor-Safe Read Compaction | Detects hashline/anchored `read` output and preserves complete edit anchors when filtering or truncating anchored lines |
 | Hard Truncation | Final character limit enforcement |
 
 ### Interactive Settings
 
-- TUI settings modal via `/rtk` command
+- Tabbed TUI settings modal via `/rtk` command
 - Real-time configuration changes without restart
 - Command completions for all subcommands
 
@@ -82,7 +83,7 @@ Open the interactive settings modal:
 /rtk
 ```
 
-Use arrow keys to navigate settings, Enter to cycle values, and Escape to close.
+Use ←/→ to switch tabs, ↑/↓ to navigate settings in the active tab, type to search, Enter/Space to cycle values, and Escape to close.
 
 ### Subcommands
 
@@ -145,6 +146,8 @@ Bash command support is intentionally resolved by the installed `rtk` binary thr
 | `outputCompaction.trackSavings` | boolean | `true` | Track compaction metrics |
 
 Skill-read preservation covers the global Pi skills directory (`~/.pi/agent/skills` by default, or `$PI_CODING_AGENT_DIR/skills` when set), `~/.agents/skills`, project `.pi/skills`, and ancestor `.agents/skills` directories.
+
+When `read` output uses Pi hashline/anchor prefixes, the compactor treats each anchored line as an indivisible edit anchor. Source filtering and truncation may omit anchored lines, but retained lines keep their complete anchor prefixes; hard truncation inserts an anchor-safe marker instead of cutting through an anchor.
 
 #### Truncation Settings
 
@@ -252,7 +255,7 @@ Automatic fixes applied on Windows:
 
 ### Dependencies
 
-- **Peer dependencies:** `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`
+- **Peer dependencies:** `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`
 - **Runtime:** Node.js ≥20, optional `rtk` binary for command rewriting
 - **Development verification:** Node.js ≥20, npm, and Bun for the test scripts
 

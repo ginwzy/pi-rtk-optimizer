@@ -1,5 +1,5 @@
 import { resolveRtkRewrite, type RtkRewriteProviderOptions } from "./rtk-rewrite-provider.js";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { RtkIntegrationConfig } from "./types.js";
 
 export interface RewriteDecision {

@@ -13,7 +13,7 @@ import { sanitizeStreamingBashExecutionResult } from "./tool-execution-sanitizer
 import { sanitizeRtkEmojiOutput } from "./techniques/emoji.ts";
 import { stripRtkHookWarnings } from "./techniques/rtk.ts";
 
-mock.module("@mariozechner/pi-coding-agent", () => ({
+mock.module("@earendil-works/pi-coding-agent", () => ({
 	getAgentDir: () => "/tmp/.pi/agent",
 }));
 

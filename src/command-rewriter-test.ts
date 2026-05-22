@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { computeRewriteDecision } from "./command-rewriter.ts";
 import { resolveRtkRewrite } from "./rtk-rewrite-provider.ts";
 import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function createMockPi(execResult: { code: number; stdout?: string; stderr?: string }): ExtensionAPI {
 	return {

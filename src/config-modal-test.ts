@@ -3,7 +3,7 @@ import { mock } from "bun:test";
 
 import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
 
-mock.module("@mariozechner/pi-coding-agent", () => ({
+mock.module("@earendil-works/pi-coding-agent", () => ({
 	getAgentDir: () => "/tmp/.pi/agent",
 	getSettingsListTheme: () => ({}),
 }));
@@ -11,7 +11,7 @@ mock.module("@mariozechner/pi-coding-agent", () => ({
 const settingsListInputs: string[] = [];
 const settingsListUpdates: Array<{ id: string; value: string }> = [];
 
-mock.module("@mariozechner/pi-tui", () => ({
+mock.module("@earendil-works/pi-tui", () => ({
 	Box: class {
 		addChild(): void {}
 	},

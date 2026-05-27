@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-26
+
+### Changed
+- Widened `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` peer dependency ranges to `^0.74.0 || ^0.75.0`.
+
 ## [0.8.0] - 2026-05-22
 
 ### Added

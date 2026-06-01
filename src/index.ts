@@ -7,10 +7,10 @@ import {
 	saveRtkIntegrationConfig,
 } from "./config-store.js";
 import { computeRewriteDecision } from "./command-rewriter.js";
-import { registerRtkIntegrationCommand } from "./config-modal.js";
+import { registerRtkIntegrationCommand } from "./command-register.js";
 import { EXTENSION_NAME } from "./constants.js";
 import { clearOutputMetrics, getOutputMetricsSummary } from "./output-metrics.js";
-import { compactToolResult, type ToolResultCompactionMetadata } from "./output-compactor.js";
+import type { ToolResultCompactionMetadata } from "./output-compactor.js";
 import { toRecord } from "./record-utils.js";
 import { applyRtkCommandEnvironment } from "./rtk-command-environment.js";
 import { resolveRtkExecutable, type RtkExecutableResolution } from "./rtk-executable-resolver.js";
@@ -30,6 +30,13 @@ function trimMessage(raw: string, maxLength = 220): string {
 
 const SOURCE_FILTER_TROUBLESHOOTING_NOTE =
 	"RTK note: If file edits repeatedly fail because old text does not match, ask the user to manually run '/rtk' in the Pi TUI, disable 'Read compaction enabled', re-read the file, apply the edit, then ask the user to manually re-enable it in the Pi TUI.";
+
+let outputCompactorModulePromise: Promise<typeof import("./output-compactor.js")> | undefined;
+
+function loadOutputCompactorModule(): Promise<typeof import("./output-compactor.js")> {
+	outputCompactorModulePromise ??= import("./output-compactor.js");
+	return outputCompactorModulePromise;
+}
 
 export function shouldInjectSourceFilterTroubleshootingNote(config: RtkIntegrationConfig): boolean {
 	const compaction = config.outputCompaction;
@@ -436,6 +443,7 @@ export default function rtkIntegrationExtension(pi: ExtensionAPI): void {
 		}
 
 		try {
+			const { compactToolResult } = await loadOutputCompactorModule();
 			const outcome = compactToolResult(
 				{
 					toolName: event.toolName,

@@ -10,7 +10,7 @@ import {
 	type RuntimeStatus,
 } from "./types.js";
 
-interface RtkIntegrationController {
+export interface RtkIntegrationController {
 	getConfig(): RtkIntegrationConfig;
 	setConfig(next: RtkIntegrationConfig, ctx: ExtensionCommandContext): void;
 	getConfigPath(): string;
@@ -584,21 +584,27 @@ async function handleArgs(
 	return true;
 }
 
+export async function handleRtkIntegrationCommand(
+	args: string,
+	ctx: ExtensionCommandContext,
+	controller: RtkIntegrationController,
+): Promise<void> {
+	if (await handleArgs(args, ctx, controller)) {
+		return;
+	}
+
+	if (!ctx.hasUI) {
+		ctx.ui.notify("/rtk requires interactive TUI mode.", "warning");
+		return;
+	}
+
+	await openSettingsModal(ctx, controller);
+}
+
 export function registerRtkIntegrationCommand(pi: ExtensionAPI, controller: RtkIntegrationController): void {
 	pi.registerCommand("rtk", {
 		description: "Configure RTK rewrite and output compaction integration",
 		getArgumentCompletions: getRtkArgumentCompletions,
-		handler: async (args, ctx) => {
-			if (await handleArgs(args, ctx, controller)) {
-				return;
-			}
-
-			if (!ctx.hasUI) {
-				ctx.ui.notify("/rtk requires interactive TUI mode.", "warning");
-				return;
-			}
-
-			await openSettingsModal(ctx, controller);
-		},
+		handler: (args, ctx) => handleRtkIntegrationCommand(args, ctx, controller),
 	});
 }

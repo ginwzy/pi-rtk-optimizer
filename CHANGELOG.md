@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-06-01
+
+### Changed
+- Deferred output compactor and configuration modal loading during extension bootstrap.
+- Replaced technique barrel imports with direct module imports.
+- Migrated inline test entrypoints from Bun to Node/tsx.
+- Widened Pi peer dependency ranges to include `^0.77.0 || ^0.78.0`.
+
 ## [0.8.1] - 2026-05-26
 
 ### Changed

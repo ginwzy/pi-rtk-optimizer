@@ -257,7 +257,7 @@ Automatic fixes applied on Windows:
 
 - **Peer dependencies:** `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`
 - **Runtime:** Node.js ≥20, optional `rtk` binary for command rewriting
-- **Development verification:** Node.js ≥20, npm, and Bun for the test scripts
+- **Development verification:** Node.js ≥24 and npm for Node/tsx test scripts using Node's experimental test module mocks
 
 ## Development
 
@@ -268,7 +268,7 @@ npm run build
 # Full typecheck
 npm run typecheck
 
-# Run Bun-based tests
+# Run Node/tsx tests
 npm run test
 
 # Full verification

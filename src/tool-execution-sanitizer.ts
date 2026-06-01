@@ -1,5 +1,7 @@
 import { toRecord } from "./record-utils.js";
-import { sanitizeRtkEmojiOutput, stripAnsiFast, stripRtkHookWarnings } from "./techniques/index.js";
+import { stripAnsiFast } from "./techniques/ansi.js";
+import { sanitizeRtkEmojiOutput } from "./techniques/emoji.js";
+import { stripRtkHookWarnings } from "./techniques/rtk.js";
 
 interface ToolResultTextBlock {
 	type: string;

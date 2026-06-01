@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { mock } from "bun:test";
+import { mock } from "node:test";
 
 import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
 
 const TEST_AGENT_DIR = "/tmp/.pi/agent";
 
-mock.module("@earendil-works/pi-coding-agent", () => ({
-	getAgentDir: () => TEST_AGENT_DIR,
-}));
+mock.module("@earendil-works/pi-coding-agent", {
+	namedExports: {
+		getAgentDir: () => TEST_AGENT_DIR,
+	},
+});
 
 const { compactToolResult } = await import("./output-compactor.ts");
 

@@ -162,9 +162,9 @@ declare module "node:assert/strict" {
 	export default assert;
 }
 
-declare module "bun:test" {
+declare module "node:test" {
 	export const mock: {
-		module(specifier: string, factory: () => Record<string, unknown>): void;
+		module(specifier: string, options: { namedExports?: Record<string, unknown>; defaultExport?: unknown }): void;
 	};
 }
 

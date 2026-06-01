@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { mock } from "bun:test";
+import { mock } from "node:test";
 
 import { clearOutputMetrics, getOutputMetricsSummary, trackOutputSavings } from "./output-metrics.ts";
 import { runTest } from "./test-helpers.ts";
@@ -13,9 +13,11 @@ import { sanitizeStreamingBashExecutionResult } from "./tool-execution-sanitizer
 import { sanitizeRtkEmojiOutput } from "./techniques/emoji.ts";
 import { stripRtkHookWarnings } from "./techniques/rtk.ts";
 
-mock.module("@earendil-works/pi-coding-agent", () => ({
-	getAgentDir: () => "/tmp/.pi/agent",
-}));
+mock.module("@earendil-works/pi-coding-agent", {
+	namedExports: {
+		getAgentDir: () => "/tmp/.pi/agent",
+	},
+});
 
 const {
 	ensureConfigExists,

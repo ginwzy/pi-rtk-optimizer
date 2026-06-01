@@ -1,32 +1,36 @@
 import assert from "node:assert/strict";
-import { mock } from "bun:test";
+import { mock } from "node:test";
 
 import { runTest } from "./test-helpers.ts";
 
-mock.module("@earendil-works/pi-coding-agent", () => ({
-	getAgentDir: () => "/tmp/.pi/agent",
-	getSettingsListTheme: () => ({}),
-	isToolCallEventType: (toolName: string, event: Record<string, unknown>) => event.toolName === toolName,
-}));
+mock.module("@earendil-works/pi-coding-agent", {
+	namedExports: {
+		getAgentDir: () => "/tmp/.pi/agent",
+		getSettingsListTheme: () => ({}),
+		isToolCallEventType: (toolName: string, event: Record<string, unknown>) => event.toolName === toolName,
+	},
+});
 
-mock.module("@earendil-works/pi-tui", () => ({
-	Box: class {},
-	Container: class {
-		addChild(): void {}
-		render(): string[] {
-			return [];
-		}
-		invalidate(): void {}
+mock.module("@earendil-works/pi-tui", {
+	namedExports: {
+		Box: class {},
+		Container: class {
+			addChild(): void {}
+			render(): string[] {
+				return [];
+			}
+			invalidate(): void {}
+		},
+		SettingsList: class {
+			handleInput(): void {}
+			updateValue(): void {}
+		},
+		Spacer: class {},
+		Text: class {},
+		truncateToWidth: (text: string) => text,
+		visibleWidth: (text: string) => text.length,
 	},
-	SettingsList: class {
-		handleInput(): void {}
-		updateValue(): void {}
-	},
-	Spacer: class {},
-	Text: class {},
-	truncateToWidth: (text: string) => text,
-	visibleWidth: (text: string) => text.length,
-}));
+});
 
 const indexModule = await import("./index.ts");
 const { createBoundedNoticeTracker, shouldInjectSourceFilterTroubleshootingNote } = indexModule;

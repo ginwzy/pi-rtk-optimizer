@@ -89,6 +89,26 @@ await runTest("already rtk unchanged", async () => {
 	assert.equal(decision.reason, "already_rtk");
 });
 
+await runTest("env-prefixed rtk command is treated as already RTK and never re-rewritten", async () => {
+	let execCallCount = 0;
+	const pi = {
+		exec: async () => {
+			execCallCount += 1;
+			return { code: 0, stdout: "rtk rtk status", stderr: "" };
+		},
+	} as unknown as ExtensionAPI;
+
+	const command = "CI=1 RTK_DB_PATH=/tmp/history.db rtk status";
+	const decision = await computeRewriteDecision(command, cloneDefaultConfig(), pi, {
+		executableResolution: { command: "rtk", resolver: "which" },
+	});
+
+	assert.equal(decision.changed, false);
+	assert.equal(decision.rewrittenCommand, command);
+	assert.equal(decision.reason, "already_rtk");
+	assert.equal(execCallCount, 0);
+});
+
 await runTest("rtk unsupported heredoc result leaves command unchanged", async () => {
 	const config = cloneDefaultConfig();
 	const decision = await computeRewriteDecision("cat <<EOF", config, createMockPi({ code: 1 }));
@@ -106,6 +126,25 @@ await runTest("quoted heredoc marker is delegated to RTK rewrite", async () => {
 	);
 	assert.equal(decision.changed, true);
 	assert.equal(decision.rewrittenCommand, 'echo "<<not heredoc" && rtk git status');
+	assert.equal(decision.reason, "ok");
+});
+
+await runTest("rg rewrite keeps the RTK ripgrep proxy instead of the grep proxy", async () => {
+	const config = cloneDefaultConfig();
+	const command = "cd /workspace && rg -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src";
+	const decision = await computeRewriteDecision(
+		command,
+		config,
+		createMockPi({
+			code: 3,
+			stdout: "cd /workspace && rtk grep -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src",
+		}),
+	);
+	assert.equal(decision.changed, true);
+	assert.equal(
+		decision.rewrittenCommand,
+		"cd /workspace && rtk rg -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src",
+	);
 	assert.equal(decision.reason, "ok");
 });
 

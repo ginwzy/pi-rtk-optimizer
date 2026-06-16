@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-06-16
+
+### Fixed
+- Added a runtime-agnostic `mock.module` shim so tests using `node:test` module mocking also pass under Bun's `bun:test` compatibility layer.
+- Deep-cloned fallback default config objects in `config-store.ts` to prevent caller mutations from leaking into subsequent config loads.
+
 ## [0.8.2] - 2026-06-01
 
 ### Changed

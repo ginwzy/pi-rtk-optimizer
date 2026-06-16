@@ -177,7 +177,7 @@ export function ensureConfigExists(configPath = CONFIG_PATH): EnsureConfigResult
 
 export function loadRtkIntegrationConfig(configPath = CONFIG_PATH): ConfigLoadResult {
 	if (!existsSync(configPath)) {
-		return { config: { ...DEFAULT_RTK_INTEGRATION_CONFIG } };
+		return { config: structuredClone(DEFAULT_RTK_INTEGRATION_CONFIG) };
 	}
 
 	try {
@@ -187,7 +187,7 @@ export function loadRtkIntegrationConfig(configPath = CONFIG_PATH): ConfigLoadRe
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		return {
-			config: { ...DEFAULT_RTK_INTEGRATION_CONFIG },
+			config: structuredClone(DEFAULT_RTK_INTEGRATION_CONFIG),
 			warning: `Failed to parse ${configPath}: ${message}`,
 		};
 	}

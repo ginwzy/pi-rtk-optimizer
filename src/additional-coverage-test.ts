@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { mock } from "node:test";
 
 import { clearOutputMetrics, getOutputMetricsSummary, trackOutputSavings } from "./output-metrics.ts";
-import { runTest } from "./test-helpers.ts";
+import { mock, runTest } from "./test-helpers.ts";
 import { matchesCommandPatterns, normalizeCommandForDetection } from "./techniques/command-detection.ts";
 import { compactPath } from "./techniques/path-utils.ts";
 import { applyWindowsBashCompatibilityFixes } from "./windows-command-helpers.ts";
@@ -138,6 +137,25 @@ runTest("config-store falls back to defaults when JSON is invalid", () => {
 		assert.equal(loaded.config.mode, "rewrite");
 		assert.ok((loaded.warning ?? "").includes(tempPath));
 		assert.ok((loaded.warning ?? "").includes("Failed to parse"));
+	} finally {
+		cleanupFile(tempPath);
+	}
+});
+
+runTest("config-store malformed-file defaults are isolated from caller mutation", () => {
+	const tempPath = makeTempConfigPath();
+	cleanupFile(tempPath);
+
+	try {
+		writeFileSync(tempPath, "{not valid json", "utf-8");
+		const firstLoad = loadRtkIntegrationConfig(tempPath);
+		firstLoad.config.outputCompaction.truncate.maxChars = 42_424;
+		firstLoad.config.outputCompaction.readCompaction.enabled = true;
+
+		const secondLoad = loadRtkIntegrationConfig(tempPath);
+
+		assert.equal(secondLoad.config.outputCompaction.truncate.maxChars, 12_000);
+		assert.equal(secondLoad.config.outputCompaction.readCompaction.enabled, false);
 	} finally {
 		cleanupFile(tempPath);
 	}

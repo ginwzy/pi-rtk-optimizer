@@ -1,6 +1,6 @@
 {
   "name": "pi-rtk-optimizer",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Pi extension that optimizes RTK command rewriting and tool output compaction for the coding agent.",
   "type": "module",
   "main": "./index.ts",
@@ -52,7 +52,7 @@
     "access": "public"
   },
   "devDependencies": {
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.1",
     "typescript": "6.0.3"
   },
   "pi": {
@@ -61,7 +61,7 @@
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.74.0 || ^0.75.0",
-    "@earendil-works/pi-tui": "^0.74.0 || ^0.75.0"
+    "@earendil-works/pi-coding-agent": "^0.74.0 || ^0.75.0 || ^0.78.0 || ^0.79.0",
+    "@earendil-works/pi-tui": "^0.74.0 || ^0.75.0 || ^0.78.0 || ^0.79.0"
   }
 }

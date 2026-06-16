@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { mock } from "node:test";
 
-import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
+import { cloneDefaultConfig, mock, runTest } from "./test-helpers.ts";
 
 const TEST_AGENT_DIR = "/tmp/.pi/agent";
 

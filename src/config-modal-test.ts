@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { mock } from "node:test";
 
-import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
+import { cloneDefaultConfig, mock, runTest } from "./test-helpers.ts";
 
 mock.module("@earendil-works/pi-coding-agent", {
 	namedExports: {

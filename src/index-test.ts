@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { mock } from "node:test";
 
-import { runTest } from "./test-helpers.ts";
+import { mock, runTest } from "./test-helpers.ts";
 
 mock.module("@earendil-works/pi-coding-agent", {
 	namedExports: {

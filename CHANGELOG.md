@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-03
+
+### Changed
+- Extracted a lazy module loader, shell-quote state machine, compaction state, and content-block helpers.
+- Consolidated the config store and extracted border-line rendering in the Zellij modal.
+- Renamed inline test files to the `.test.ts` convention.
+- Added the owned extension directory to `.gitignore`.
+- Updated README with badges, a Ko-fi link, and a refreshed file tree.
+- Widened Pi peer dependency compatibility to include `^0.80.0` and added vulnerability overrides (`protobufjs`, `ws`).
+
+### Fixed
+- Ignored string and comment braces in source filtering.
+- Counted Unicode pass/fail symbols in the test-output fallback.
+
+### Removed
+- Removed the emoji and rtk-hook-warning techniques.
+- Removed the unused ripgrep rewrite.
+
 ## [0.8.3] - 2026-06-16
 
 ### Fixed
@@ -18,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Deferred output compactor and configuration modal loading during extension bootstrap.
 - Replaced technique barrel imports with direct module imports.
-- Migrated inline test entrypoints from Bun to Node/tsx.
+- Kept inline test entrypoints on Bun while using a runtime-agnostic test helper for compatibility.
 - Widened Pi peer dependency ranges to include `^0.77.0 || ^0.78.0`.
 
 ## [0.8.1] - 2026-05-26

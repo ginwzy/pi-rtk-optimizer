@@ -9,6 +9,7 @@ import {
 import { computeRewriteDecision } from "./command-rewriter.js";
 import { registerRtkIntegrationCommand } from "./command-register.js";
 import { EXTENSION_NAME } from "./constants.js";
+import { createLazyModuleLoader } from "./lazy-module-loader.js";
 import { clearOutputMetrics, getOutputMetricsSummary } from "./output-metrics.js";
 import type { ToolResultCompactionMetadata } from "./output-compactor.js";
 import { toRecord } from "./record-utils.js";
@@ -31,12 +32,62 @@ function trimMessage(raw: string, maxLength = 220): string {
 const SOURCE_FILTER_TROUBLESHOOTING_NOTE =
 	"RTK note: If file edits repeatedly fail because old text does not match, ask the user to manually run '/rtk' in the Pi TUI, disable 'Read compaction enabled', re-read the file, apply the edit, then ask the user to manually re-enable it in the Pi TUI.";
 
-let outputCompactorModulePromise: Promise<typeof import("./output-compactor.js")> | undefined;
+/**
+ * Inject a guideline bullet into the Guidelines section of the system prompt.
+ *
+ * Locates the `Guidelines:` block and inserts the bullet after the last
+ * existing guideline, preserving the section structure. Falls back to
+ * appending at the end when the Guidelines section cannot be found.
+ */
+export function injectGuidelineIntoPrompt(systemPrompt: string, guideline: string): string {
+	if (!systemPrompt || systemPrompt.includes(guideline)) {
+		return systemPrompt;
+	}
 
-function loadOutputCompactorModule(): Promise<typeof import("./output-compactor.js")> {
-	outputCompactorModulePromise ??= import("./output-compactor.js");
-	return outputCompactorModulePromise;
+	const bullet = `- ${guideline}`;
+
+	// "Guidelines:" may appear at the very start of the prompt (index 0) or
+	// after a newline. Check both cases so the header is always detected.
+	let guidelinesHeaderIndex = systemPrompt.indexOf("\nGuidelines:\n");
+	let headerLength = "\nGuidelines:\n".length;
+
+	if (guidelinesHeaderIndex === -1 && systemPrompt.startsWith("Guidelines:\n")) {
+		guidelinesHeaderIndex = 0;
+		headerLength = "Guidelines:\n".length;
+	}
+
+	if (guidelinesHeaderIndex === -1) {
+		return `${systemPrompt}\n\n${guideline}`;
+	}
+
+	const linesStart = guidelinesHeaderIndex + headerLength;
+	const remainder = systemPrompt.slice(linesStart);
+	const lines = remainder.split("\n");
+
+	let consumedChars = 0;
+	for (const line of lines) {
+		if (line === "") {
+			break;
+		}
+		if (/^[-*+\s]/.test(line)) {
+			consumedChars += line.length + 1;
+			continue;
+		}
+		break;
+	}
+
+	const insertAt = consumedChars === 0 ? linesStart : linesStart + consumedChars - 1;
+
+	const before = systemPrompt.slice(0, insertAt);
+	const after = systemPrompt.slice(insertAt);
+
+	const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+	const needsNewlineAfter = after.length > 0 && !after.startsWith("\n");
+
+	return [before, needsNewlineBefore ? "\n" : "", bullet, needsNewlineAfter ? "\n" : "", after].join("");
 }
+
+const loadOutputCompactorModule = createLazyModuleLoader<typeof import("./output-compactor.js")>("./output-compactor.js");
 
 export function shouldInjectSourceFilterTroubleshootingNote(config: RtkIntegrationConfig): boolean {
 	const compaction = config.outputCompaction;
@@ -110,6 +161,10 @@ export function createBoundedNoticeTracker(maxEntries: number): BoundedNoticeTra
 export default function rtkIntegrationExtension(pi: ExtensionAPI): void {
 	const initialLoad = loadRtkIntegrationConfig();
 	let config: RtkIntegrationConfig = initialLoad.config;
+	if (!config.enabled) {
+		return;
+	}
+
 	let pendingLoadWarning = initialLoad.warning;
 	let runtimeStatus: RuntimeStatus = { rtkAvailable: false };
 	const warnedMessages = createBoundedNoticeTracker(100);
@@ -176,6 +231,27 @@ export default function rtkIntegrationExtension(pi: ExtensionAPI): void {
 		}
 
 		activeBashCommands.delete(toolCallId);
+	};
+
+	/**
+	 * Shared guard for bash tool-execution events: skips when compaction is
+	 * disabled, normalizes the event to a record, tracks the bash command, and
+	 * returns the record for further handler-specific processing.
+	 */
+	const recordBashEventIfEnabled = (
+		event: unknown,
+	): Record<string, unknown> | null => {
+		if (!config.enabled || !config.outputCompaction.enabled) {
+			return null;
+		}
+
+		const eventRecord = toRecord(event);
+		if (eventRecord.toolName !== "bash") {
+			return null;
+		}
+
+		trackBashCommand(eventRecord.toolCallId, eventRecord.args);
+		return eventRecord;
 	};
 
 	const refreshConfig = async (ctx?: ExtensionContext | ExtensionCommandContext): Promise<void> => {
@@ -308,29 +384,15 @@ export default function rtkIntegrationExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.on("tool_execution_start", async (event) => {
-		if (!config.enabled || !config.outputCompaction.enabled) {
-			return;
-		}
-
-		const eventRecord = toRecord(event);
-		if (eventRecord.toolName !== "bash") {
-			return;
-		}
-
-		trackBashCommand(eventRecord.toolCallId, eventRecord.args);
+		recordBashEventIfEnabled(event);
 	});
 
 	pi.on("tool_execution_update", async (event) => {
-		if (!config.enabled || !config.outputCompaction.enabled) {
+		const eventRecord = recordBashEventIfEnabled(event);
+		if (!eventRecord) {
 			return;
 		}
 
-		const eventRecord = toRecord(event);
-		if (eventRecord.toolName !== "bash") {
-			return;
-		}
-
-		trackBashCommand(eventRecord.toolCallId, eventRecord.args);
 		const sanitization = sanitizeStreamingBashExecutionResult(
 			eventRecord.partialResult,
 			getTrackedBashCommand(eventRecord.toolCallId),
@@ -373,8 +435,14 @@ export default function rtkIntegrationExtension(pi: ExtensionAPI): void {
 			return {};
 		}
 
+		const updatedPrompt = injectGuidelineIntoPrompt(event.systemPrompt, SOURCE_FILTER_TROUBLESHOOTING_NOTE);
+
+		if (updatedPrompt === event.systemPrompt) {
+			return {};
+		}
+
 		return {
-			systemPrompt: `${event.systemPrompt}\n\n${SOURCE_FILTER_TROUBLESHOOTING_NOTE}`,
+			systemPrompt: updatedPrompt,
 		};
 	});
 

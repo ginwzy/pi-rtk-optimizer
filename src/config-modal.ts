@@ -1,24 +1,14 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { SettingItem } from "@earendil-works/pi-tui";
 import { toOnOff } from "./boolean-format.js";
+import type { RtkIntegrationController } from "./command-register.js";
 import { ZellijModal, ZellijSettingsModal } from "./zellij-modal.js";
-import { getRtkArgumentCompletions } from "./command-completions.js";
 import {
 	DEFAULT_RTK_INTEGRATION_CONFIG,
 	RTK_SOURCE_FILTER_LEVELS,
 	type RtkIntegrationConfig,
 	type RuntimeStatus,
 } from "./types.js";
-
-export interface RtkIntegrationController {
-	getConfig(): RtkIntegrationConfig;
-	setConfig(next: RtkIntegrationConfig, ctx: ExtensionCommandContext): void;
-	getConfigPath(): string;
-	getRuntimeStatus(): RuntimeStatus;
-	refreshRuntimeStatus(): Promise<RuntimeStatus>;
-	getMetricsSummary(): string;
-	clearMetrics(): void;
-}
 
 interface SettingValueSyncTarget {
 	updateValue(id: string, value: string): void;
@@ -599,12 +589,4 @@ export async function handleRtkIntegrationCommand(
 	}
 
 	await openSettingsModal(ctx, controller);
-}
-
-export function registerRtkIntegrationCommand(pi: ExtensionAPI, controller: RtkIntegrationController): void {
-	pi.registerCommand("rtk", {
-		description: "Configure RTK rewrite and output compaction integration",
-		getArgumentCompletions: getRtkArgumentCompletions,
-		handler: (args, ctx) => handleRtkIntegrationCommand(args, ctx, controller),
-	});
 }

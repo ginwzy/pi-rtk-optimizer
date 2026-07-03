@@ -1,6 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { resolveRtkExecutable, type RtkExecutableResolution } from "./rtk-executable-resolver.js";
-import { splitLeadingEnvAssignments } from "./shell-env-prefix.js";
 
 export interface RtkRewriteProviderResult {
 	changed: boolean;
@@ -28,113 +27,6 @@ function normalizeOptions(optionsOrTimeout: number | RtkRewriteProviderOptions):
 		return { timeoutMs: optionsOrTimeout };
 	}
 	return optionsOrTimeout;
-}
-
-interface ShellSegmentSplit {
-	segments: string[];
-	separators: string[];
-}
-
-function splitTopLevelShellSegments(command: string): ShellSegmentSplit {
-	const segments: string[] = [];
-	const separators: string[] = [];
-	let quote: '"' | "'" | "`" | null = null;
-	let escaped = false;
-	let segmentStart = 0;
-
-	for (let index = 0; index < command.length; index += 1) {
-		const character = command[index] ?? "";
-		const nextCharacter = command[index + 1] ?? "";
-		const previousCharacter = index > 0 ? (command[index - 1] ?? "") : "";
-
-		if (escaped) {
-			escaped = false;
-			continue;
-		}
-
-		if (quote !== null) {
-			if (character === "\\" && quote !== "'") {
-				escaped = true;
-				continue;
-			}
-			if (character === quote) {
-				quote = null;
-			}
-			continue;
-		}
-
-		if (character === "\\") {
-			escaped = true;
-			continue;
-		}
-
-		if (character === '"' || character === "'" || character === "`") {
-			quote = character;
-			continue;
-		}
-
-		const twoCharacterOperator = `${character}${nextCharacter}`;
-		const separator =
-			twoCharacterOperator === "&&" || twoCharacterOperator === "||" || twoCharacterOperator === "|&"
-				? twoCharacterOperator
-				: character === ";" || (character === "|" && previousCharacter !== ">")
-					? character
-					: null;
-
-		if (separator === null) {
-			continue;
-		}
-
-		segments.push(command.slice(segmentStart, index));
-		separators.push(separator);
-		index += separator.length - 1;
-		segmentStart = index + 1;
-	}
-
-	segments.push(command.slice(segmentStart));
-	return { segments, separators };
-}
-
-function startsWithRipgrepCommand(segment: string): boolean {
-	const trimmed = segment.trimStart();
-	const effectiveCommand = splitLeadingEnvAssignments(trimmed).command.trimStart();
-	return /^rg(?=\s|$)/u.test(effectiveCommand);
-}
-
-function replaceRtkGrepProxyWithRtkRg(segment: string): string {
-	const leadingWhitespace = segment.match(/^\s*/u)?.[0] ?? "";
-	const withoutLeadingWhitespace = segment.slice(leadingWhitespace.length);
-	const { envPrefix, command } = splitLeadingEnvAssignments(withoutLeadingWhitespace);
-	const nextCommand = command.replace(/^(rtk)(\s+)grep(?=\s|$)/u, "$1$2rg");
-	return nextCommand === command ? segment : `${leadingWhitespace}${envPrefix}${nextCommand}`;
-}
-
-function normalizeRipgrepRewrite(originalCommand: string, rewrittenCommand: string): string {
-	const original = splitTopLevelShellSegments(originalCommand);
-	const rewritten = splitTopLevelShellSegments(rewrittenCommand);
-	if (original.segments.length !== rewritten.segments.length) {
-		return rewrittenCommand;
-	}
-
-	let changed = false;
-	const rewrittenSegments = rewritten.segments.map((segment, index) => {
-		if (!startsWithRipgrepCommand(original.segments[index] ?? "")) {
-			return segment;
-		}
-
-		const nextSegment = replaceRtkGrepProxyWithRtkRg(segment);
-		changed ||= nextSegment !== segment;
-		return nextSegment;
-	});
-
-	if (!changed) {
-		return rewrittenCommand;
-	}
-
-	return rewrittenSegments.reduce((accumulator, segment, index) => {
-		const separator = rewritten.separators[index - 1];
-		return separator === undefined ? segment : `${accumulator}${separator}${segment}`;
-	}, "");
 }
 
 export async function resolveRtkRewrite(
@@ -184,8 +76,8 @@ export async function resolveRtkRewrite(
 		}
 
 		if (result.code === 0 || result.code === 3) {
-			const rewrittenOutput = result.stdout?.trim();
-			if (!rewrittenOutput) {
+			const rewritten = result.stdout?.trim();
+			if (!rewritten) {
 				return {
 					changed: false,
 					originalCommand: command,
@@ -195,7 +87,6 @@ export async function resolveRtkRewrite(
 					executableResolution,
 				};
 			}
-			const rewritten = normalizeRipgrepRewrite(command, rewrittenOutput);
 			if (rewritten === command) {
 				return {
 					changed: false,

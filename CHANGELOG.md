@@ -10,20 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] - 2026-07-03
 
 ### Changed
-- Extracted a lazy module loader, shell-quote state machine, compaction state, and content-block helpers.
-- Consolidated the config store and extracted border-line rendering in the Zellij modal.
-- Renamed inline test files to the `.test.ts` convention.
-- Added the owned extension directory to `.gitignore`.
-- Updated README with badges, a Ko-fi link, and a refreshed file tree.
-- Widened Pi peer dependency compatibility to include `^0.80.0` and added vulnerability overrides (`protobufjs`, `ws`).
+- Extracted a lazy module loader, shell-quote state machine, compaction state, and content-block helpers. ([4229513](https://github.com/MasuRii/pi-rtk-optimizer/commit/422951343759b47e81443273731469481723365f) [8c39b94](https://github.com/MasuRii/pi-rtk-optimizer/commit/8c39b94965879aef5c39ab74d19c6ff20f437e02))
+- Consolidated the config store and extracted border-line rendering in the Zellij modal. ([ccdee3d](https://github.com/MasuRii/pi-rtk-optimizer/commit/ccdee3df3a36246941bace9b138dc93e38a6363b) [762ee6a](https://github.com/MasuRii/pi-rtk-optimizer/commit/762ee6a9ca1e68fc4f705532d87c4130a337985c))
+- Renamed inline test files to the `.test.ts` convention. ([25ec5eb](https://github.com/MasuRii/pi-rtk-optimizer/commit/25ec5eb361d9d22404f08f9d6186677fdcbd2c74))
+- Added the owned extension directory to `.gitignore`. ([af2e851](https://github.com/MasuRii/pi-rtk-optimizer/commit/af2e85173379fb46e3a2c4ada23bec9de0b47aa0))
+- Updated README with badges, a Ko-fi link, and a refreshed file tree. ([e70ca70](https://github.com/MasuRii/pi-rtk-optimizer/commit/e70ca70de7925cc56a02c6d7c43a2065b2ebc74f))
+- Widened Pi peer dependency compatibility to include `^0.80.0` and added vulnerability overrides (`protobufjs`, `ws`). ([92137b2](https://github.com/MasuRii/pi-rtk-optimizer/commit/92137b2689988c64922478176ff60396e35efff2))
 
 ### Fixed
-- Ignored string and comment braces in source filtering.
-- Counted Unicode pass/fail symbols in the test-output fallback.
+- Ignored string and comment braces in source filtering. ([85fbd28](https://github.com/MasuRii/pi-rtk-optimizer/commit/85fbd28edceb780d254ea0dc6cb2b31c6f572b37))
+- Counted Unicode pass/fail symbols in the test-output fallback. ([b59b18d](https://github.com/MasuRii/pi-rtk-optimizer/commit/b59b18d26d83a016cc2fd04ffab8e80b50540f54))
 
 ### Removed
-- Removed the emoji and rtk-hook-warning techniques.
-- Removed the unused ripgrep rewrite.
+- Removed the emoji and rtk-hook-warning techniques. ([8f07417](https://github.com/MasuRii/pi-rtk-optimizer/commit/8f07417d1d539fd62cb97cd4e30431a45f819642))
+- Removed the unused ripgrep rewrite. ([ccdee3d](https://github.com/MasuRii/pi-rtk-optimizer/commit/ccdee3df3a36246941bace9b138dc93e38a6363b))
 
 ## [0.8.3] - 2026-06-16
 

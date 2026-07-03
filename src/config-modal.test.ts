@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { cloneDefaultConfig, mock, runTest } from "./test-helpers.ts";
+import { cloneDefaultConfig, mock, runTest } from "./test-helpers.test.ts";
 
 mock.module("@earendil-works/pi-coding-agent", {
 	namedExports: {
@@ -43,7 +43,7 @@ function stripAnsi(text: string): string {
 	return text.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-const { registerRtkIntegrationCommand } = await import("./config-modal.ts");
+const { registerRtkIntegrationCommand } = await import("./command-register.ts");
 const { ZellijModal, ZellijSettingsModal } = await import("./zellij-modal.ts");
 const { getRtkArgumentCompletions } = await import("./command-completions.ts");
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 import { computeRewriteDecision } from "./command-rewriter.ts";
 import { resolveRtkRewrite } from "./rtk-rewrite-provider.ts";
-import { cloneDefaultConfig, runTest } from "./test-helpers.ts";
+import { cloneDefaultConfig, runTest } from "./test-helpers.test.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function createMockPi(execResult: { code: number; stdout?: string; stderr?: string }): ExtensionAPI {
@@ -129,22 +129,20 @@ await runTest("quoted heredoc marker is delegated to RTK rewrite", async () => {
 	assert.equal(decision.reason, "ok");
 });
 
-await runTest("rg rewrite keeps the RTK ripgrep proxy instead of the grep proxy", async () => {
+await runTest("rg rewrite delegates to rtk grep proxy", async () => {
 	const config = cloneDefaultConfig();
 	const command = "cd /workspace && rg -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src";
+	const rewritten = "cd /workspace && rtk grep -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src";
 	const decision = await computeRewriteDecision(
 		command,
 		config,
 		createMockPi({
 			code: 3,
-			stdout: "cd /workspace && rtk grep -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src",
+			stdout: rewritten,
 		}),
 	);
 	assert.equal(decision.changed, true);
-	assert.equal(
-		decision.rewrittenCommand,
-		"cd /workspace && rtk rg -n --glob '!node_modules/**' --glob '!dist/**' \"needle\" src",
-	);
+	assert.equal(decision.rewrittenCommand, rewritten);
 	assert.equal(decision.reason, "ok");
 });
 

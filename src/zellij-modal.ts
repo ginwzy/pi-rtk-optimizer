@@ -444,55 +444,57 @@ export class ZellijModalFrame {
 		};
 	}
 
-	private renderTitleBar(width: number, palette: ZellijColorPalette): string {
+	private renderBorderLine(
+		width: number,
+		palette: ZellijColorPalette,
+		leftCorner: string,
+		rightCorner: string,
+		renderInner: (innerWidth: number, borderPaint: (text: string) => string) => string,
+	): string {
 		const innerWidth = Math.max(0, width - 2);
 		const borderColor = this.config.focused ? palette.borderFocused : palette.borderUnfocused;
 		const borderPaint = (text: string) => this.theme.colorizeForeground(borderColor, text);
+		const inner = innerWidth === 0 ? "" : renderInner(innerWidth, borderPaint);
+		return `${borderPaint(leftCorner)}${inner}${borderPaint(rightCorner)}`;
+	}
 
-		if (innerWidth === 0) {
-			return `${borderPaint(this.borders.topLeft)}${borderPaint(this.borders.topRight)}`;
-		}
+	private renderTitleBar(width: number, palette: ZellijColorPalette): string {
+		return this.renderBorderLine(width, palette, this.borders.topLeft, this.borders.topRight, (innerWidth, borderPaint) => {
+			const segments = this.positionTitleSegments(innerWidth);
+			let inner = "";
+			let cursor = 0;
 
-		const segments = this.positionTitleSegments(innerWidth);
-		let inner = "";
-		let cursor = 0;
-
-		for (const segment of segments) {
-			if (segment.start > cursor) {
-				inner += borderPaint(this.borders.horizontal.repeat(segment.start - cursor));
+			for (const segment of segments) {
+				if (segment.start > cursor) {
+					inner += borderPaint(this.borders.horizontal.repeat(segment.start - cursor));
+				}
+				const text = segment.bold ? `\x1b[1m${segment.text}${ANSI_RESET}` : segment.text;
+				inner += this.theme.colorizeForeground(segment.color, text);
+				cursor = segment.end;
 			}
-			const text = segment.bold ? `\x1b[1m${segment.text}${ANSI_RESET}` : segment.text;
-			inner += this.theme.colorizeForeground(segment.color, text);
-			cursor = segment.end;
-		}
 
-		if (cursor < innerWidth) {
-			inner += borderPaint(this.borders.horizontal.repeat(innerWidth - cursor));
-		}
+			if (cursor < innerWidth) {
+				inner += borderPaint(this.borders.horizontal.repeat(innerWidth - cursor));
+			}
 
-		return `${borderPaint(this.borders.topLeft)}${inner}${borderPaint(this.borders.topRight)}`;
+			return inner;
+		});
 	}
 
 	private renderBottomLine(width: number, palette: ZellijColorPalette): string {
-		const innerWidth = Math.max(0, width - 2);
-		const borderColor = this.config.focused ? palette.borderFocused : palette.borderUnfocused;
-		const borderPaint = (text: string) => this.theme.colorizeForeground(borderColor, text);
+		return this.renderBorderLine(width, palette, this.borders.bottomLeft, this.borders.bottomRight, (innerWidth, borderPaint) => {
+			const helpText = this.resolveHelpText(Math.max(0, innerWidth - 3));
+			if (!helpText) {
+				return borderPaint(this.borders.horizontal.repeat(innerWidth));
+			}
 
-		if (innerWidth === 0) {
-			return `${borderPaint(this.borders.bottomLeft)}${borderPaint(this.borders.bottomRight)}`;
-		}
+			const helpSlot = this.config.helpUndertitle?.color ?? "dim";
+			const safeHelp = truncateToWidth(helpText, Math.max(0, innerWidth - 3), "…");
+			const helpWidth = visibleWidth(safeHelp);
+			const rightFill = Math.max(0, innerWidth - helpWidth - 3);
 
-		const helpText = this.resolveHelpText(Math.max(0, innerWidth - 3));
-		if (!helpText) {
-			return `${borderPaint(this.borders.bottomLeft)}${borderPaint(this.borders.horizontal.repeat(innerWidth))}${borderPaint(this.borders.bottomRight)}`;
-		}
-
-		const helpSlot = this.config.helpUndertitle?.color ?? "dim";
-		const safeHelp = truncateToWidth(helpText, Math.max(0, innerWidth - 3), "…");
-		const helpWidth = visibleWidth(safeHelp);
-		const rightFill = Math.max(0, innerWidth - helpWidth - 3);
-
-		return `${borderPaint(this.borders.bottomLeft)}${borderPaint(this.borders.horizontal)} ${this.theme.colorizeForeground(helpSlot, safeHelp)} ${borderPaint(this.borders.horizontal.repeat(rightFill))}${borderPaint(this.borders.bottomRight)}`;
+			return `${borderPaint(this.borders.horizontal)} ${this.theme.colorizeForeground(helpSlot, safeHelp)} ${borderPaint(this.borders.horizontal.repeat(rightFill))}`;
+		});
 	}
 
 	private positionTitleSegments(innerWidth: number): PositionedTitleSegment[] {
@@ -683,18 +685,14 @@ export class ZellijModal implements ZellijModalComponent {
 			const rawLines = this.content.render(contentWidth);
 			const normalized = rawLines.length > 0 ? rawLines : [""];
 
-			for (let i = 0; i < this.config.padding; i++) {
-				lines.push(" ".repeat(paddedWidth));
-			}
+			pushVerticalPadding(lines, this.config.padding, paddedWidth);
 
 			for (const line of normalized) {
 				const fitted = truncateToWidth(line, contentWidth, "", true);
 				lines.push(`${sidePadding}${fitted}${sidePadding}`);
 			}
 
-			for (let i = 0; i < this.config.padding; i++) {
-				lines.push(" ".repeat(paddedWidth));
-			}
+			pushVerticalPadding(lines, this.config.padding, paddedWidth);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const safe = truncateToWidth(` Render error: ${message} `, paddedWidth, "…", true);
@@ -1042,52 +1040,71 @@ function parseAnsiForegroundColor(ansi: string): PaletteColor | null {
 	return null;
 }
 
-function truncateStart(text: string, maxWidth: number): string {
+/**
+ * Shared no-op guard for the directional truncators: returns the value to emit
+ * immediately when no truncation is required (text fits, or maxWidth is too
+ * small to hold anything but an ellipsis fragment), otherwise `null` signals
+ * the caller to proceed with directional truncation.
+ */
+function truncateNoOpGuard(text: string, maxWidth: number): string | null {
 	if (visibleWidth(text) <= maxWidth) {
 		return text;
 	}
 	if (maxWidth <= 1) {
 		return "…".slice(0, maxWidth);
 	}
-	const chars = Array.from(text);
-	let current = "";
-	for (let index = chars.length - 1; index >= 0; index--) {
-		const candidate = `${chars[index]}${current}`;
-		if (visibleWidth(candidate) >= maxWidth - 1) {
-			current = candidate;
-			break;
-		}
-		current = candidate;
+	return null;
+}
+
+function truncateWithNoOpGuard(
+	text: string,
+	maxWidth: number,
+	compute: () => string,
+): string {
+	const guarded = truncateNoOpGuard(text, maxWidth);
+	if (guarded !== null) {
+		return guarded;
 	}
-	return `…${truncateToWidth(current, Math.max(0, maxWidth - 1), "")}`;
+	return compute();
+}
+
+function truncateStart(text: string, maxWidth: number): string {
+	return truncateWithNoOpGuard(text, maxWidth, () => {
+		const chars = Array.from(text);
+		let current = "";
+		for (let index = chars.length - 1; index >= 0; index--) {
+			const candidate = `${chars[index]}${current}`;
+			if (visibleWidth(candidate) >= maxWidth - 1) {
+				current = candidate;
+				break;
+			}
+			current = candidate;
+		}
+		return `…${truncateToWidth(current, Math.max(0, maxWidth - 1), "")}`;
+	});
 }
 
 function truncateMiddle(text: string, maxWidth: number): string {
-	if (visibleWidth(text) <= maxWidth) {
-		return text;
-	}
-	if (maxWidth <= 1) {
-		return "…".slice(0, maxWidth);
-	}
+	return truncateWithNoOpGuard(text, maxWidth, () => {
+		const headTarget = Math.floor((maxWidth - 1) / 2);
+		const tailTarget = Math.max(0, maxWidth - 1 - headTarget);
+		const head = truncateToWidth(text, headTarget, "");
 
-	const headTarget = Math.floor((maxWidth - 1) / 2);
-	const tailTarget = Math.max(0, maxWidth - 1 - headTarget);
-	const head = truncateToWidth(text, headTarget, "");
-
-	const chars = Array.from(text);
-	let tail = "";
-	for (let index = chars.length - 1; index >= 0; index--) {
-		const candidate = `${chars[index]}${tail}`;
-		if (visibleWidth(candidate) > tailTarget) {
-			continue;
+		const chars = Array.from(text);
+		let tail = "";
+		for (let index = chars.length - 1; index >= 0; index--) {
+			const candidate = `${chars[index]}${tail}`;
+			if (visibleWidth(candidate) > tailTarget) {
+				continue;
+			}
+			tail = candidate;
+			if (visibleWidth(tail) === tailTarget) {
+				break;
+			}
 		}
-		tail = candidate;
-		if (visibleWidth(tail) === tailTarget) {
-			break;
-		}
-	}
 
-	return `${head}…${tail}`;
+		return `${head}…${tail}`;
+	});
 }
 
 function clampInt(value: number, min: number, max: number): number {
@@ -1095,6 +1112,12 @@ function clampInt(value: number, min: number, max: number): number {
 		return min;
 	}
 	return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function pushVerticalPadding(lines: string[], count: number, paddedWidth: number): void {
+	for (let i = 0; i < count; i++) {
+		lines.push(" ".repeat(paddedWidth));
+	}
 }
 
 /**
